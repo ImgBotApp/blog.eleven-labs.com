@@ -21,7 +21,7 @@ function get_language {
     local PERMALINK
     local LANGUAGE
 
-    PERMALINK=$(grep "permalink: /" "$1")
+    PERMALINK=$(grep "permalink: /" "${1}")
     LANGUAGE=$(echo "${PERMALINK}" | sed --regexp-extended "s/permalink: \/(fr|en)\/.*/\1/g")
 
     echo "${LANGUAGE}"
@@ -41,19 +41,32 @@ function get_clean_file_content {
     # remove front matter
     CLEAN_FILE_CONTENT=$(echo "$CLEAN_FILE_CONTENT" | sed "1 { /^---/ { :a N; /\n---/! ba; d} }")
 
-    ## remove code blocks
+    # remove code blocks
     CLEAN_FILE_CONTENT=$(echo "$CLEAN_FILE_CONTENT" | sed "/\`\`\`/ { :a N; /\n\`\`\`/! ba; d}")
 
-    ## remove liquid tags
+    # remove liquid tags
     CLEAN_FILE_CONTENT=$(echo "$CLEAN_FILE_CONTENT" | sed --regexp-extended "s/\{:([^\}]+)\}//g")
 
-    ## remove html
+    # remove html
     CLEAN_FILE_CONTENT=$(echo "$CLEAN_FILE_CONTENT" | sed --regexp-extended "s/<([^<]+)>//g")
 
-    ## remove links
+    # remove links
     CLEAN_FILE_CONTENT=$(echo "$CLEAN_FILE_CONTENT" | sed --regexp-extended "s/http(s)?:\/\/([^ ]+)//g")
 
     echo "${CLEAN_FILE_CONTENT}"
+}
+
+# get_misspelled_words
+#
+# $1 content
+# $2 language
+function get_misspelled_words {
+    local MISSPELLED
+
+    echo "aspell --lang=${2} --encoding=utf-8 --personal=./.aspell.${2}.pws list"
+    MISSPELLED=$(echo "${1}" | aspell --lang="${2}" --encoding="utf-8" --personal="./.aspell.${2}.pws" list)
+
+    echo "${MISSPELLED}"
 }
 
 [[ -z $TRAVIS_COMMIT_RANGE ]] && echo "var TRAVIS_COMMIT_RANGE is not set" && exit 1
@@ -70,5 +83,10 @@ do
 
     # get clean content
     CONTENT=$(get_clean_file_content "${UPDATED_MARKDOWN_FILE}")
+
+    # run aspell
+    MISSPELLED_WORDS=$(get_misspelled_words "${CONTENT}" "${LANGUAGE}")
+
+    echo "${MISSPELLED_WORDS}"
 
 done <<< "${UPDATED_MARKDOWN_FILES}"
